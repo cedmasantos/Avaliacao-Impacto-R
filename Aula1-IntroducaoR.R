@@ -1,0 +1,1 @@
+#Script da aula 1 - Introdução ao R. 
