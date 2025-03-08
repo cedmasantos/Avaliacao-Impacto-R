@@ -1,0 +1,139 @@
+---
+title: " Notebook dos exercícios da Aula 2 - MQO, Mínimos Quadrados Ordinários do curso de avaliação de Impacto em R - Fundação Itau" 
+
+output: html_notebook
+---
+
+Curso Avançado de Avaliação de Políticas Públicas e Projetos Sociais - Fundação Itaú
+
+Aula 02 - MQO, Mínimos Quadrados Ordinários.
+
+Desenvolvido por: Cedma Santos
+
+Exercício 01: Baseado em: Wooldridge, J. M. Introdução à Econometria - Uma Abordagem Moderna. Exemplo 4.9
+
+Considere o seguinte modelo para explicar o peso de recém-nascidos: 𝑝𝑒𝑠𝑜_𝑛𝑎𝑠𝑐𝑖𝑚𝑒𝑛𝑡𝑜 = 𝛽0 + 𝛽1𝑐𝑖𝑔𝑎𝑟𝑟𝑜𝑠 + 𝛽2𝑜𝑟𝑑𝑒𝑚_𝑛𝑎𝑠𝑐𝑖𝑚𝑒𝑛𝑡𝑜 + 𝛽3𝑟𝑒𝑛𝑑𝑎_𝑓𝑎𝑚𝑖𝑙𝑖𝑎𝑟 + 𝛽4𝑒𝑑𝑢𝑐𝑎çã𝑜_𝑚ã𝑒 + 𝛽5𝑒𝑑𝑢𝑐𝑎çã𝑜_𝑝𝑎𝑖 + 𝑢
+
+A base BWGHT.dta é utilizada para estudar determinantes do peso ao nascer (birth weight). Fonte: Introductory Econometrics: A Modern Approach do Jeffrey Wooldridge
+
+Dicionário de dados:
+
+bwght: peso do bebê ao nascer (em onças).
+
+cigs: número médio de cigarros fumados por dia durante a gravidez.
+
+faminc: renda familiar em milhares de dólares.
+
+otheduc: anos de escolaridade da mãe.
+
+fatheduc: anos de escolaridade do pai.
+
+parity: número de filhos anteriores da mãe.
+
+male: indicador se o bebê é do sexo masculino (1 = sim, 0 = não).
+
+```{r}
+setwd("C:/Users/cedma/Downloads/CursoR-Itau/Aula 2 - Causalidade e MQO") #definindo diretório de tabalho
+
+library(haven) #pacote para abrir base de dados no formato .dta
+
+data1 <- read_dta("BWGHT.dta")
+```
+
+### a) Estime modelo e sumarize os resultados em tabela.
+
+```{r}
+mqo_1 <- lm(bwght ~ cigs + parity + motheduc + fatheduc, data = data)
+
+# Visualizando os resultados: summary
+
+summary(mqo_1)
+```
+
+```{r}
+
+# stargazer: pacote que permite a visualização da saída da regressão em uma tabela limpa e organizada.
+#install.packages('stargazer')
+library(stargazer)
+
+#Visualizando os resultados pelo stargazer
+
+stargazer(mqo_1,
+          type="text",
+          title = "Regressão linar de peso ao nascer",
+          dep.var.labels = "peso ao nascer",
+          stlyer = "aer",
+          model.names=TRUE)
+```
+
+A equação estimada pelo MQO é:
+
+bwght =113.736−0.606⋅cigs+1.765⋅parity−0.276⋅motheduc+0.580⋅fatheduc
+
+Intercepto (113.736): Quando todas as variáveis explicativas são zero, o peso previsto ao nascer seria 113.736 onças. Esse valor não tem um significado direto, pois dificilmente ocorre na prática.
+
+Cigs (-0.606): Cada cigarro adicional fumado por dia durante a gravidez reduz, em média, o peso ao nascer em 0.606 onças. O coeficiente é estatisticamente significativo (p\<0.01), ou seja, há forte evidência de que o tabagismo da mãe impacta negativamente o peso do bebê.
+
+Parity (+1.765): Cada filho anterior da mãe aumenta, em média, o peso ao nascer em 1.765 onças. O coeficiente é significativo ao nível de 1%, sugerindo que bebês de mães com mais filhos anteriores tendem a nascer com um peso um pouco maior.
+
+Motheduc (-0.276): Cada ano adicional de escolaridade da mãe reduz, em média, o peso ao nascer em 0.276 onças, mas esse efeito não é estatisticamente significativo (p\>0.1). Ou seja, não podemos concluir que a educação da mãe tem um impacto claro no peso do bebê com base nesses dados.
+
+Fatheduc (+0.580): Cada ano adicional de escolaridade do pai aumenta, em média, o peso ao nascer em 0.580 onças. Esse efeito é significativo ao nível de 5%, sugerindo que a educação paterna pode estar associada a um maior peso ao nascer.
+
+### b) Verifique se após controlarmos pela quantidade de cigarros consumidos por dia pela mãe durante a gravidez, ordem de nascimento e renda familiar, a educação da mãe e do pai, conjuntamente, não têm efeito sobre o peso de nascimento.
+
+Para testar se a educação da mãe e do pai não tem efeito sobre o peso ao nascer conjuntamente, será necessário realizar um teste de hipótese conjunta. O teste F é o mais apropriado para testar a significância conjunta, que verifica se os coeficientes de duas ou mais variáeis são simultaneamente iguais a zero.
+
+Hipóteses do teste F:
+
+-   Hipótese nula (𝐻0 ): A educação da mãe e do pai não afeta o peso ao nascer, ou seja:
+
+𝐻0:𝛽3 = 𝛽4 = 0
+
+-   Hipótese alternativa (𝐻1 ): Pelo menos um dos coeficientes (𝛽3 ou 𝛽4) é diferente de zero.
+
+O teste F compara dois modelos:
+
+-   Modelo completo (não restrito): contém todas as variáveis, incluindo motheduc e fatheduc.
+-   Modelo restrito: removemos motheduc e fatheduc, ou seja, forçamos 𝛽3 = 0 e 𝛽4 = 0, deixando apenas cigs, parity e outras variáveis.
+
+```{r}
+
+# car: pacote para realizar o teste de significância conjunta
+
+#install.packages('car')
+library (car)
+
+#Testando conjuntamente as hipóteses de que o coeficiente de educação da mãe e do pai são iguais a zero:
+
+linearHypothesis(mqo_1, c("motheduc=0", "fatheduc=0"))
+
+```
+
+O **p-valor (**0.090770.090770.09077) é maior que 0.05, mas **menor que 0.10**. Isso significa que, ao nível de **5%**, **não rejeitamos** H0H_0H0​, ou seja, **não há evidência suficiente de que a escolaridade dos pais afeta o peso ao nascer**.
+
+No entanto, ao nível de **10%**, o resultado seria **marginalmente significativo**, o que indica uma possível influência fraca.
+
+Se estivermos usando um **nível de significância de 5%** (α=0.05\alpha = 0.05α=0.05), **não há evidência estatisticamente significativa de que a escolaridade dos pais influencia o peso ao nascer**. Se estivermos usando um **nível de 10%** (α=0.10\alpha = 0.10α=0.10), **podemos argumentar que há uma pequena evidência de efeito**. O impacto individual da **motheduc** já era não significativo no modelo original (p\>0.1p \> 0.1p\>0.1), mas o efeito de **fatheduc** era significativo ao nível de 5%. O teste conjunto sugere que, em conjunto, os dois coeficientes não são estatisticamente diferentes de zero.
+
+### C) Reestime o modelo, ainda por MQO, mas agora considerando a variável dependente em logaritmo natural.
+
+```{r}
+mqo_log <- lm(lbwght ~ cigs + parity + lfaminc + motheduc + fatheduc, data = data)
+ 
+# Sumarize os dois modelos em uma só tabela e compare os coeficientes estimados por MQO.
+
+stargazer(mqo_1, mqo_2,
+          type="text",
+          title = "Regressão linear de peso ao nascer",
+          dep.var.labels = c("peso ao nascer", "log(peso ao nascer)"),
+          stlyer="aer",
+          model.names = TRUE)
+
+```
+
+
+- O tabagismo materno tem um impacto negativo no peso ao nascer em ambos os modelos, mas no log-linear esse efeito é percentual.
+- O número de filhos anteriores da mãe aumenta proporcionalmente o peso do bebê, o que pode refletir maior experiência materna.
+- A renda familiar tem um efeito positivo no peso ao nascer, e esse efeito é mais claro no modelo log-linear.
+- A escolaridade dos pais não tem um efeito estatisticamente relevante após controlar por outras variáveis.
